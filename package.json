@@ -1,0 +1,31 @@
+{
+  "name": "tennisgame",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "start": "NODE_NO_WARNINGS=1 node --loader ts-node/esm apps/console/gameConsole.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@types/events": "^3.0.3",
+    "@types/jest": "^30.0.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^24.3.0",
+    "eslint": "^9.34.0",
+    "jest": "^30.1.1",
+    "prettier": "^3.6.2",
+    "ts-jest": "^29.4.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "@types/react": "^19.1.12",
+    "events": "^3.3.0",
+    "react": "^19.1.1"
+  }
+}
