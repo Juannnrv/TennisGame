@@ -1,3 +1,5 @@
+// domain/ports/IGame.ts
+
 /**
  * Represents a player in the tennis game.
  * 1 for Player 1, 2 for Player 2.
@@ -5,7 +7,16 @@
 export type Player = 1 | 2;
 
 /**
- * Interface for a tennis game.
+ * GameState describes the canonical state of the game (used by domain).
+ */
+export type GameState =
+  | { type: 'progress'; scoreLabel: string } // e.g. "15–30"
+  | { type: 'deuce' }
+  | { type: 'advantage'; player: string }
+  | { type: 'won'; player: string };
+
+/**
+ * Interface for a tennis game (domain port).
  */
 export interface IGame {
   /**
@@ -15,9 +26,14 @@ export interface IGame {
   pointTo(player: Player): void;
 
   /**
-   * Returns the current score as a formatted string.
+   * Returns the current score as a formatted string (human readable).
    */
   getScore(): string;
+
+  /**
+   * Returns the canonical GameState (useful for adapters/tests).
+   */
+  getState(): GameState;
 
   /**
    * Resets the game to its initial state.
@@ -25,14 +41,7 @@ export interface IGame {
   reset(): void;
 
   /**
-   * Returns the formatted score without winner information
-   * @returns The current score in tennis format
-   */
-  getFormattedScore(): string;
-
-  /**
    * Returns the raw points for both players.
-   * @returns An object with the points for player 1 (p1) and player 2 (p2).
    */
   getRawPoints(): { p1: number; p2: number };
 }
