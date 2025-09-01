@@ -1,33 +1,39 @@
-import type { IGame, Player } from "./../ports/IGame.js";
+
+import type { IGame, Player, GameState } from "./../ports/IGame.js";
 
 /**
- * Labels for tennis scores in order: 0, 1, 2, 3 points.
+ * Immutable labels used for the first four point values in tennis:
+ * 0, 1, 2, and 3 points.
  */
 const SCORE_LABELS = ["love", "15", "30", "40"] as const;
 
 /**
- * TennisGame implements the IGame interface for managing a tennis match.
- * Tracks points for two players, calculates score, and handles game state.
+ * Class: TennisGame
+ *
+ * Implementation of the IGame interface representing a single tennis game.
+ *
+ * The class encapsulates the rules of tennis scoring for two players, 
+ * providing functionality to:
+ * - Award points to players.
+ * - Determine the current game state (progress, deuce, advantage, win).
+ * - Retrieve human-readable score representations.
+ * - Reset the game to its initial state.
+ *
+ * This class acts as the domain model and serves as the canonical 
+ * source of truth for the game state.
  */
 export class TennisGame implements IGame {
-  /**
-   * Points for Player 1.
-   */
+  /** Internal raw point counter for Player 1. */
   private p1 = 0;
-  /**
-   * Points for Player 2.
-   */
+
+  /** Internal raw point counter for Player 2. */
   private p2 = 0;
 
   /**
-   * Stores the last valid score.
-   */
-  private lastValidScore: string | null = null;
-
-  /**
-   * Creates a new TennisGame instance.
-   * @param player1Name Name for Player 1 (default: "Player 1")
-   * @param player2Name Name for Player 2 (default: "Player 2")
+   * Constructs a TennisGame instance with optional player names.
+   *
+   * @param player1Name - Display name for Player 1 (default: "Player 1").
+   * @param player2Name - Display name for Player 2 (default: "Player 2").
    */
   constructor(
     public player1Name = "Player 1",
@@ -36,8 +42,9 @@ export class TennisGame implements IGame {
 
   /**
    * Awards a point to the specified player.
-   * Throws an error if the game already has a winner.
-   * @param player The player to award the point to (1 or 2).
+   *
+   * @param player - Identifier for the player (1 or 2).
+   * @throws Error if the game has already been won.
    */
   pointTo(player: Player): void {
     if (this.hasWinner()) throw new Error("Game has already been won");
@@ -45,33 +52,53 @@ export class TennisGame implements IGame {
   }
 
   /**
-   * Returns the current score as a formatted string.
-   * Handles standard tennis scoring, deuce, advantage, and win states.
-   * @returns The current score.
+   * Returns the current score as a human-readable string.
+   * Delegates to {@link getState} for canonical game state resolution.
+   *
+   * @returns A formatted score string (e.g. "15–30", "Deuce", "Advantage Player 1").
    */
   getScore(): string {
-    const winner = this.getWinner();
-    if (winner) {
-      return `${winner} wins!`;
+    const state = this.getState();
+    switch (state.type) {
+      case "deuce":
+        return "Deuce";
+      case "advantage":
+        return `Advantage ${state.player}`;
+      case "won":
+        return `${state.player} wins`;
+      case "progress":
+        return state.scoreLabel;
     }
-
-    // Calculate current score
-    const label1 = SCORE_LABELS[Math.min(this.p1, 3)];
-    const label2 = SCORE_LABELS[Math.min(this.p2, 3)];
-    this.lastValidScore = `${label1}–${label2}`;
-
-    // Handle deuce and advantage cases
-    if (this.p1 >= 3 && this.p2 >= 3) {
-      if (this.p1 === this.p2) return "DEUCE!";
-      if (this.p1 === this.p2 + 1) return `Advantage ${this.player1Name}`;
-      if (this.p2 === this.p1 + 1) return `Advantage ${this.player2Name}`;
-    }
-
-    return this.lastValidScore;
   }
 
   /**
-   * Resets the game to its initial state.
+   * Computes and returns the canonical game state.
+   * This method consolidates the scoring rules of tennis and should 
+   * be treated as the single source of truth for consumers.
+   *
+   * @returns A {@link GameState} object describing the current state.
+   */
+  getState(): GameState {
+    const winner = this.getWinner();
+    if (winner) {
+      return { type: "won", player: winner };
+    }
+
+    // Handle deuce and advantage
+    if (this.p1 >= 3 && this.p2 >= 3) {
+      if (this.p1 === this.p2) return { type: "deuce" };
+      if (this.p1 === this.p2 + 1) return { type: "advantage", player: this.player1Name };
+      if (this.p2 === this.p1 + 1) return { type: "advantage", player: this.player2Name };
+    }
+
+    // Normal scoring
+    const label1 = SCORE_LABELS[Math.min(this.p1, 3)];
+    const label2 = SCORE_LABELS[Math.min(this.p2, 3)];
+    return { type: "progress", scoreLabel: `${label1}–${label2}` };
+  }
+
+  /**
+   * Resets the game to its initial state (both players on 0 points).
    */
   reset(): void {
     this.p1 = 0;
@@ -79,37 +106,33 @@ export class TennisGame implements IGame {
   }
 
   /**
-   * Returns the raw points for both players.
-   * @returns An object with the points for player 1 (p1) and player 2 (p2).
+   * Retrieves the raw point counters for both players.
+   * Intended for debugging or advanced usage.
+   *
+   * @returns An object with numerical point values: { p1, p2 }.
    */
   getRawPoints() {
     return { p1: this.p1, p2: this.p2 };
   }
 
   /**
-   * Gets the formatted score without winner information
-   * @returns The current score in tennis format
-   */
-  getFormattedScore(): string {
-    const points = this.getRawPoints();
-    return `${SCORE_LABELS[Math.min(points.p1, 3)]}–${SCORE_LABELS[Math.min(points.p2, 3)]}`;
-  }
-
-  /**
-   * Determines the winner of the game, if any.
-   * @returns The name of the winner, or null if there is no winner yet.
+   * Evaluates whether there is a winner under tennis rules.
+   *
+   * @returns The winning player's name, or null if no winner yet.
    */
   private getWinner(): string | null {
     const max = Math.max(this.p1, this.p2);
     const diff = Math.abs(this.p1 - this.p2);
-    if (max >= 4 && diff >= 2)
+    if (max >= 4 && diff >= 2) {
       return this.p1 > this.p2 ? this.player1Name : this.player2Name;
+    }
     return null;
   }
 
   /**
-   * Checks if the game has a winner.
-   * @returns True if there is a winner, false otherwise.
+   * Indicates whether the game has already been won.
+   *
+   * @returns True if a winner exists, otherwise false.
    */
   private hasWinner(): boolean {
     return this.getWinner() !== null;
